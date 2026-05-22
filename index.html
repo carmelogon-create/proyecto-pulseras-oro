@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const helmet = require('helmet');
 
 const app = express();
+
 app.use(helmet());
 app.use(bodyParser.json());
 
@@ -11,14 +12,21 @@ app.post('/capturar', (req, res) => {
 
   // Validaciones básicas
   if (!nombre || !correo || !aceptoPolitica) {
-    return res.status(400).json({ mensaje: 'Datos incompletos o sin consentimiento.' });
+    return res.status(400).json({
+      mensaje: 'Datos incompletos o sin consentimiento.'
+    });
   }
-  // Validación de email, teléfono, etc. (Implementar según necesidad)
-  // Guardar en base de datos (mock)
+
+  // Validación de email, teléfono, etc.
+  // Guardar en base de datos
   // TODO: Insertar lógica real aquí
   console.log({ nombre, correo, telefono, direccion });
 
-  res.status(201).json({ mensaje: 'Datos capturados correctamente.' });
+  res.status(201).json({
+    mensaje: 'Datos capturados correctamente.'
+  });
 });
 
-app.listen(3000, () => console.log('Servidor iniciado en puerto 3000'));
+app.listen(3000, () => {
+  console.log('Servidor iniciado en puerto 3000');
+});
