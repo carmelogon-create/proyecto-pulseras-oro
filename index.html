@@ -1,32 +1,338 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const helmet = require('helmet');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurum - Tienda de Pulseras de Oro</title>
+    <!-- Tailwind CSS para diseño elegante y rápido -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        body { background-color: #fafafa; }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-800">
 
-const app = express();
+    <!-- NAV BAR -->
+    <header class="sticky top-0 z-40 bg-white shadow-sm border-b border-amber-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-gem text-amber-500 text-2xl"></i>
+                <span class="text-2xl font-serif tracking-widest text-amber-600 font-bold">AURUM</span>
+            </div>
+            
+            <nav class="flex gap-8 text-sm font-medium tracking-wider uppercase">
+                <button onclick="cambiarCategoria('hombre')" id="btn-hombre" class="border-b-2 border-amber-600 text-amber-600 pb-1 cursor-pointer transition-all">Hombre</button>
+                <button onclick="cambiarCategoria('mujer')" id="btn-mujer" class="border-b-2 border-transparent text-gray-500 hover:text-amber-600 pb-1 cursor-pointer transition-all">Mujer</button>
+            </nav>
 
-app.use(helmet());
-app.use(bodyParser.json());
+            <button onclick="toggleCarrito()" class="relative p-2 text-gray-600 hover:text-amber-600 cursor-pointer transition-colors">
+                <i class="fa-solid fa-bag-shopping text-2xl"></i>
+                <span id="carrito-contador" class="absolute -top-1 -right-1 bg-amber-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
+            </button>
+        </div>
+    </header>
 
-app.post('/capturar', (req, res) => {
-  const { nombre, correo, telefono, direccion, aceptoPolitica } = req.body;
+    <!-- HERO BANNER -->
+    <section class="bg-gradient-to-r from-amber-50 via-amber-100/50 to-amber-50 py-12 text-center border-b border-amber-100">
+        <h1 id="titulo-categoria" class="text-4xl font-serif text-gray-900 mb-2">Colección de Oro para Hombre</h1>
+        <p class="text-gray-500 max-w-md mx-auto text-sm">Piezas exclusivas talladas en oro puro de 18 quilates. Elegancia y distinción en cada detalle.</p>
+    </section>
 
-  // Validaciones básicas
-  if (!nombre || !correo || !aceptoPolitica) {
-    return res.status(400).json({
-      mensaje: 'Datos incompletos o sin consentimiento.'
-    });
-  }
+    <!-- GALERÍA DE PRODUCTOS -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div id="galeria-productos" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            <!-- Los productos se cargan dinámicamente con JavaScript -->
+        </div>
+    </main>
 
-  // Validación de email, teléfono, etc.
-  // Guardar en base de datos
-  // TODO: Insertar lógica real aquí
-  console.log({ nombre, correo, telefono, direccion });
+    <!-- MODAL: DETALLE DE PRODUCTO (VISTA AMPLIADA) -->
+    <div id="modal-producto" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 opacity-0 pointer-events-none modal transition-all duration-300">
+        <div class="bg-white rounded-xl max-w-2xl w-full overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col md:flex-row">
+            <div class="md:w-1/2 bg-gray-50 p-6 flex items-center justify-center relative">
+                <button onclick="cerrarModal()" class="absolute top-4 left-4 md:hidden text-gray-500 hover:text-gray-800 text-xl"><i class="fa-solid fa-xmark"></i></button>
+                <img id="modal-img" src="" alt="Pulsera Ampliada" class="max-h-80 object-contain drop-shadow-xl">
+            </div>
+            <div class="md:w-1/2 p-8 flex flex-col justify-between relative">
+                <button onclick="cerrarModal()" class="hidden md:block absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                <div>
+                    <span class="text-xs uppercase tracking-widest text-amber-600 font-semibold mb-1 block">Oro de 18K</span>
+                    <h2 id="modal-nombre" class="text-2xl font-serif text-gray-900 mb-2"></h2>
+                    <p id="modal-precio" class="text-xl font-semibold text-amber-700 mb-4"></p>
+                    <hr class="border-gray-100 my-4">
+                    <p id="modal-descripcion" class="text-gray-600 text-sm leading-relaxed mb-6"></p>
+                </div>
+                <button id="modal-btn-agregar" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-amber-600/10">
+                    <i class="fa-solid fa-cart-plus"></i> Añadir al Carrito
+                </button>
+            </div>
+        </div>
+    </div>
 
-  res.status(201).json({
-    mensaje: 'Datos capturados correctamente.'
-  });
-});
+    <!-- SIDEBAR: CARRITO DE COMPRAS Y FORMULARIO -->
+    <div id="sidebar-carrito" class="fixed inset-0 z-50 bg-black/50 opacity-0 pointer-events-none transition-all duration-300">
+        <div id="panel-carrito" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl translate-x-full transition-transform duration-300 flex flex-col">
+            
+            <!-- Cabecera Carrito -->
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-amber-600"></i> Tu Bolsa de Compras</h3>
+                <button onclick="toggleCarrito()" class="text-gray-400 hover:text-gray-600 text-xl p-1 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
 
-app.listen(3000, () => {
-  console.log('Servidor iniciado en puerto 3000');
-});
+            <!-- Lista de Productos -->
+            <div id="carrito-items" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Items dinámicos -->
+            </div>
+
+            <!-- Formulario y Checkout -->
+            <div class="p-6 border-t border-gray-100 bg-gray-50">
+                <div class="flex justify-between items-center mb-4 text-gray-900 font-bold">
+                    <span>Total estimado:</span>
+                    <span id="carrito-total" class="text-xl text-amber-700">$0 COP</span>
+                </div>
+                
+                <!-- Datos del Comprador -->
+                <form id="form-comprador" onsubmit="procesarCompra(event)" class="space-y-3 hidden">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Datos de Envío</p>
+                    <input type="text" required placeholder="Nombre completo" class="w-full text-sm bg-white border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-amber-500">
+                    <input type="email" required placeholder="Correo electrónico" class="w-full text-sm bg-white border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-amber-500">
+                    <input type="tel" required placeholder="Teléfono / Celular" class="w-full text-sm bg-white border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-amber-500">
+                    <input type="text" required placeholder="Dirección de entrega (Ciudad, Barrio, N°)" class="w-full text-sm bg-white border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-amber-500">
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg transition-colors cursor-pointer mt-2 shadow-md shadow-emerald-600/10">
+                        <i class="fa-solid fa-lock"></i> Confirmar Pedido
+                    </button>
+                </form>
+
+                <button id="btn-IrAFormulario" onclick="mostrarFormulario()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 rounded-lg transition-colors cursor-pointer text-center block">
+                    Proceder al Pago
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT DE LA APLICACIÓN -->
+    <script>
+        // Banco de datos local para simular las 20 piezas por categoría
+        const database = {
+            hombre: Array.from({ length: 20 }, (_, i) => ({
+                id: `H-${i+1}`,
+                nombre: `Pulsera Maciza Cubana H${i+1}`,
+                descripcion: `Pulsera de eslabones estilo cubano en oro amarillo de 18K. Acabado pulido brillante de alta resistencia. Peso aprox: ${15 + i}g.`,
+                precio: 2500000 + (i * 120000),
+                // Usamos placeholders estables de Unsplash simulando texturas o planos de joyería de oro
+                imagen: `https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3`
+            })),
+            mujer: Array.from({ length: 20 }, (_, i) => ({
+                id: `M-${i+1}`,
+                nombre: `Pulsera Riviera Luxury M${i+1}`,
+                descripcion: `Elegante pulsera tipo Riviera en oro blanco u oro rosa de 18K con incrustaciones finas talladas a mano. Diseño flexible y cierre de seguridad. Peso aprox: ${8 + i}g.`,
+                precio: 1950000 + (i * 150000),
+                imagen: `https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3`
+            }))
+        };
+
+        let categoriaActual = 'hombre';
+        let carrito = [];
+
+        // Inicializar app
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProductos();
+        });
+
+        function renderProductos() {
+            const contenedor = document.getElementById('galeria-productos');
+            contenedor.innerHTML = '';
+            
+            database[categoriaActual].forEach(prod => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-md transition-all group flex flex-col justify-between";
+                card.innerHTML = `
+                    <div onclick="abrirModal('${prod.id}')" class="cursor-pointer overflow-hidden bg-gray-50 flex items-center justify-center p-6 h-64 relative">
+                        <img src="${prod.imagen}" alt="${prod.nombre}" class="max-h-full max-w-full object-contain transform group-hover:scale-105 transition-transform duration-300 drop-shadow-sm">
+                        <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span class="bg-white/90 text-xs font-semibold tracking-wider text-gray-900 px-3 py-2 rounded-md shadow-xs uppercase"><i class="fa-solid fa-magnifying-glass-plus"></i> Vista Rápida</span>
+                        </div>
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h3 onclick="abrirModal('${prod.id}')" class="text-gray-900 font-serif text-base hover:text-amber-600 cursor-pointer transition-colors line-clamp-1 mb-1">${prod.nombre}</h3>
+                            <p class="text-gray-400 text-xs line-clamp-2 mb-3">${prod.descripcion}</p>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-50">
+                            <span class="text-base font-bold text-amber-700">${formatearMoneda(prod.precio)}</span>
+                            <button onclick="agregarAlCarrito('${prod.id}')" class="bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white p-2 rounded-lg transition-colors cursor-pointer text-sm" title="Agregar al carrito">
+                                <i class="fa-solid fa-cart-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                contenedor.appendChild(card);
+            });
+        }
+
+        function cambiarCategoria(cat) {
+            categoriaActual = cat;
+            
+            // Estilos de botones de navegación
+            const btnHombre = document.getElementById('btn-hombre');
+            const btnMujer = document.getElementById('btn-mujer');
+            const titulo = document.getElementById('titulo-categoria');
+
+            if(cat === 'hombre') {
+                btnHombre.className = "border-b-2 border-amber-600 text-amber-600 pb-1 cursor-pointer transition-all";
+                btnMujer.className = "border-b-2 border-transparent text-gray-500 hover:text-amber-600 pb-1 cursor-pointer transition-all";
+                titulo.textContent = "Colección de Oro para Hombre";
+            } else {
+                btnMujer.className = "border-b-2 border-amber-600 text-amber-600 pb-1 cursor-pointer transition-all";
+                btnHombre.className = "border-b-2 border-transparent text-gray-500 hover:text-amber-600 pb-1 cursor-pointer transition-all";
+                titulo.textContent = "Colección de Oro para Mujer";
+            }
+            renderProductos();
+        }
+
+        // Sistema de Modal (Imagen Ampliada + Detalle)
+        function abrirModal(id) {
+            const producto = [...database.hombre, ...database.mujer].find(p => p.id === id);
+            if(!producto) return;
+
+            document.getElementById('modal-img').src = producto.imagen;
+            document.getElementById('modal-nombre').textContent = producto.nombre;
+            document.getElementById('modal-precio').textContent = formatearMoneda(producto.precio);
+            document.getElementById('modal-descripcion').textContent = producto.descripcion;
+            
+            const btnAgregar = document.getElementById('modal-btn-agregar');
+            btnAgregar.onclick = () => {
+                agregarAlCarrito(producto.id);
+                cerrarModal();
+            };
+
+            const modal = document.getElementById('modal-producto');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-95');
+        }
+
+        function cerrarModal() {
+            const modal = document.getElementById('modal-producto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.add('scale-95');
+        }
+
+        // Lógica de Carrito de Compras
+        function toggleCarrito() {
+            const sidebar = document.getElementById('sidebar-carrito');
+            const panel = document.getElementById('panel-carrito');
+            
+            if(sidebar.classList.contains('opacity-0')) {
+                sidebar.classList.remove('opacity-0', 'pointer-events-none');
+                panel.classList.remove('translate-x-full');
+            } else {
+                sidebar.classList.add('opacity-0', 'pointer-events-none');
+                panel.classList.add('translate-x-full');
+                // Reiniciar vista del formulario si se cierra
+                document.getElementById('form-comprador').classList.add('hidden');
+                document.getElementById('btn-IrAFormulario').classList.remove('hidden');
+            }
+        }
+
+        function agregarAlCarrito(id) {
+            const producto = [...database.hombre, ...database.mujer].find(p => p.id === id);
+            const itemExistente = carrito.find(item => item.producto.id === id);
+
+            if(itemExistente) {
+                itemExistente.cantidad++;
+            } else {
+                carrito.push({ producto, cantidad: 1 });
+            }
+            actualizarCarritoUI();
+            
+            // Pequeña notificación visual del contador de carrito
+            const contador = document.getElementById('carrito-contador');
+            contador.classList.add('scale-125');
+            setTimeout(() => contador.classList.remove('scale-125'), 200);
+        }
+
+        function eliminarDelCarrito(id) {
+            carrito = carrito.filter(item => item.producto.id !== id);
+            actualizarCarritoUI();
+        }
+
+        function actualizarCarritoUI() {
+            const itemsContenedor = document.getElementById('carrito-items');
+            const contador = document.getElementById('carrito-contador');
+            const totalContenedor = document.getElementById('carrito-total');
+            
+            itemsContenedor.innerHTML = '';
+            let total = 0;
+            let totalItems = 0;
+
+            if (carrito.length === 0) {
+                itemsContenedor.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-3 block"></i>
+                        <p class="text-sm">Tu carrito está vacío.</p>
+                    </div>
+                `;
+                document.getElementById('btn-IrAFormulario').classList.add('hidden');
+            } else {
+                if(document.getElementById('form-comprador').classList.contains('hidden')) {
+                    document.getElementById('btn-IrAFormulario').classList.remove('hidden');
+                }
+                
+                carrito.forEach(item => {
+                    total += item.producto.precio * item.cantidad;
+                    totalItems += item.cantidad;
+
+                    const div = document.createElement('div');
+                    div.className = "flex gap-4 bg-white p-3 rounded-lg border border-gray-100 items-center justify-between shadow-xs";
+                    div.innerHTML = `
+                        <img src="${item.producto.imagen}" class="w-12 h-12 object-contain bg-gray-50 p-1 rounded-md">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-xs font-medium text-gray-900 truncate">${item.producto.nombre}</h4>
+                            <p class="text-xs text-amber-700 font-semibold mt-0.5">${item.cantidad}x ${formatearMoneda(item.producto.precio)}</p>
+                        </div>
+                        <button onclick="eliminarDelCarrito('${item.producto.id}')" class="text-gray-400 hover:text-red-500 p-1 cursor-pointer transition-colors text-sm">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    itemsContenedor.appendChild(div);
+                });
+            }
+
+            totalContenedor.textContent = formatearMoneda(total);
+            
+            if(totalItems > 0) {
+                contador.textContent = totalItems;
+                contador.classList.remove('hidden');
+            } else {
+                contador.classList.add('hidden');
+            }
+        }
+
+        function mostrarFormulario() {
+            document.getElementById('btn-IrAFormulario').classList.add('hidden');
+            document.getElementById('form-comprador').classList.remove('hidden');
+        }
+
+        function procesarCompra(event) {
+            event.preventDefault();
+            // Aquí puedes conectar el envío de datos a una API real o correo. Mostramos alerta de éxito.
+            alert('¡Muchas gracias por tu compra! Tu pedido de joyería ha sido procesado con éxito. Pronto nos comunicaremos contigo.');
+            
+            // Resetear estado
+            carrito = [];
+            document.getElementById('form-comprador').reset();
+            actualizarCarritoUI();
+            toggleCarrito();
+        }
+
+        function formatearMoneda(valor) {
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 0
+            }).format(valor);
+        }
+    </script>
+</body>
+</html>
